@@ -1,0 +1,3191 @@
+{
+  "manual_version": "0.1.0",
+  "utcp_version": "1.0.2",
+  "tools": [
+    {
+      "name": "jira_search_jql",
+      "description": "Recherche des tickets Jira par JQL (GET) ; renvoie les champs demandés de chaque ticket. Pagination par jeton : relancer avec `nextPageToken` tant que `isLast` vaut false. Sans `fields`, seul l'identifiant est renvoyé ; les epics se cherchent par JQL (`parent = PLAT-1` ou `issuetype = Epic`).",
+      "tags": [
+        "jira",
+        "recherche",
+        "jql",
+        "lecture"
+      ],
+      "average_response_size": 30000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "jql": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Requête JQL, par exemple project = PLAT ORDER BY updated DESC."
+          },
+          "fields": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_*,.-]{1,500}$",
+            "description": "Champs séparés par des virgules (summary,status,assignee…), ou *all."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions séparées par des virgules (names, renderedFields…)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats (1 à 100)."
+          },
+          "nextPageToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.-]{1,1000}$",
+            "description": "Jeton de page suivante renvoyé par l'appel précédent."
+          }
+        },
+        "required": [
+          "jql"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/search/jql",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_search_jql_post",
+      "description": "Recherche des tickets Jira par JQL en POST, utile pour une requête ou une liste de champs longue. Corps : jql, fields (tableau), maxResults, nextPageToken ; pagination par jeton comme en GET.",
+      "tags": [
+        "jira",
+        "recherche",
+        "jql",
+        "lecture"
+      ],
+      "average_response_size": 30000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "requete": {
+            "type": "object",
+            "description": "Corps de la recherche.",
+            "properties": {
+              "jql": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 10000
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_*.-]{1,100}$"
+                }
+              },
+              "expand": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.,-]{1,200}$"
+              },
+              "maxResults": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "nextPageToken": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_=+/.-]{1,1000}$"
+              }
+            },
+            "required": [
+              "jql"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "requete"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/search/jql",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "requete"
+      }
+    },
+    {
+      "name": "jira_get_issue",
+      "description": "Lit un ticket Jira (champs, description en ADF v3, selon `fields` et `expand`). Demander `fields` précis pour réduire la réponse ; `expand=renderedFields` ajoute la description en HTML, `changelog` l'historique, `transitions` les transitions possibles.",
+      "tags": [
+        "jira",
+        "ticket",
+        "lecture"
+      ],
+      "average_response_size": 7500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "fields": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_*,.-]{1,500}$",
+            "description": "Champs séparés par des virgules (summary,status,attachment…), ou *all."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions séparées par des virgules (renderedFields, changelog, transitions, names)."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_create_issue",
+      "description": "Crée un ticket Jira ; renvoie id, key et self. La description et les champs texte riches sont en ADF ; les champs personnalisés se passent sous `customfield_NNNNN` dans `fields`.",
+      "tags": [
+        "jira",
+        "ticket",
+        "creation"
+      ],
+      "average_response_size": 400,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "object",
+            "description": "Corps de création du ticket.",
+            "properties": {
+              "fields": {
+                "type": "object",
+                "description": "Champs du ticket.",
+                "properties": {
+                  "project": {
+                    "type": "object",
+                    "description": "Projet.",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9]{1,9}$",
+                        "description": "Clé du projet."
+                      }
+                    },
+                    "required": [
+                      "key"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "Titre du ticket."
+                  },
+                  "issuetype": {
+                    "type": "object",
+                    "description": "Type de ticket (name ou id).",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Nom, par exemple Task, Bug, Story."
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[0-9]{1,19}$",
+                        "description": "Identifiant du type."
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "description": {
+                    "type": "object",
+                    "description": "Document ADF (Atlassian Document Format) : {\"type\":\"doc\",\"version\":1,\"content\":[...]}.",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "doc"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "const": 1
+                      },
+                      "content": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "version",
+                      "content"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "priority": {
+                    "type": "object",
+                    "description": "Priorité.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Nom de la priorité."
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "assignee": {
+                    "type": "object",
+                    "description": "Responsable.",
+                    "properties": {
+                      "accountId": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9:_-]{1,128}$",
+                        "description": "Identifiant de compte."
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "labels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[^ ]{1,255}$"
+                    },
+                    "description": "Libellés (sans espace)."
+                  },
+                  "parent": {
+                    "type": "object",
+                    "description": "Ticket parent (epic ou ticket).",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+                        "description": "Clé du parent."
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "project",
+                  "summary",
+                  "issuetype"
+                ],
+                "additionalProperties": true
+              },
+              "update": {
+                "type": "object",
+                "description": "Opérations de mise à jour (rarement utile à la création).",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "fields"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ticket"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "self": {
+            "type": "string"
+          }
+        }
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "ticket"
+      }
+    },
+    {
+      "name": "jira_update_issue",
+      "description": "Modifie des champs d'un ticket Jira (PUT) ; renvoie 204 sans corps. `fields` remplace la valeur d'un champ, `update` ajoute ou retire (ex. labels). Description en ADF.",
+      "tags": [
+        "jira",
+        "ticket",
+        "modification"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "notifyUsers": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Notifier les observateurs (défaut true)."
+          },
+          "modification": {
+            "type": "object",
+            "description": "Champs à modifier.",
+            "properties": {
+              "fields": {
+                "type": "object",
+                "description": "Valeurs de champs à remplacer, par exemple summary, description (ADF), labels.",
+                "additionalProperties": true
+              },
+              "update": {
+                "type": "object",
+                "description": "Opérations par champ, par exemple {\"labels\":[{\"add\":\"urgent\"}]}.",
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "modification"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}",
+        "http_method": "PUT",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "modification"
+      }
+    },
+    {
+      "name": "jira_delete_issue",
+      "description": "Supprime définitivement un ticket Jira (irréversible) ; renvoie 204. Échoue si le ticket a des sous-tâches, sauf `deleteSubtasks=true`.",
+      "tags": [
+        "jira",
+        "ticket",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "deleteSubtasks": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Supprimer aussi les sous-tâches (défaut false)."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_assign_issue",
+      "description": "Assigne un ticket Jira à un utilisateur ; renvoie 204. `accountId` à null désassigne, la chaîne -1 applique le responsable par défaut du projet.",
+      "tags": [
+        "jira",
+        "ticket",
+        "assignation"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "assignation": {
+            "type": "object",
+            "description": "Cible de l'assignation.",
+            "properties": {
+              "accountId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^(-1|[a-zA-Z0-9:_-]{1,128})$",
+                "description": "Identifiant de compte, -1 pour le défaut, null pour désassigner."
+              }
+            },
+            "required": [
+              "accountId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "assignation"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/assignee",
+        "http_method": "PUT",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "assignation"
+      }
+    },
+    {
+      "name": "jira_get_transitions",
+      "description": "Liste les transitions possibles d'un ticket avec leur statut cible (`to.name`, `to.id`). Passer `transitionId` à jira_transition_issue ; `expand=transitions.fields` donne les champs exigés par chaque transition.",
+      "tags": [
+        "jira",
+        "transition",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions, par exemple transitions.fields."
+          },
+          "transitionId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Limiter à une transition."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/transitions",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_transition_issue",
+      "description": "Fait passer un ticket Jira à un autre statut en exécutant une transition (identifiant obtenu par jira_get_transitions) ; renvoie 204. Les champs exigés par la transition (résolution…) vont dans `fields`.",
+      "tags": [
+        "jira",
+        "transition",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "transition": {
+            "type": "object",
+            "description": "Transition à exécuter.",
+            "properties": {
+              "transition": {
+                "type": "object",
+                "description": "Transition.",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-9]{1,19}$",
+                    "description": "Identifiant de transition."
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "additionalProperties": false
+              },
+              "fields": {
+                "type": "object",
+                "description": "Champs exigés par la transition.",
+                "additionalProperties": true
+              },
+              "update": {
+                "type": "object",
+                "description": "Opérations de mise à jour, par exemple un commentaire.",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "transition"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "transition"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/transitions",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "transition"
+      }
+    },
+    {
+      "name": "jira_get_comments",
+      "description": "Lit les commentaires d'un ticket Jira, paginés (startAt/maxResults) ; corps de commentaire en ADF. Renvoie total, startAt, maxResults et la liste `comments`.",
+      "tags": [
+        "jira",
+        "commentaire",
+        "lecture"
+      ],
+      "average_response_size": 6000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats (1 à 100)."
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "created",
+              "-created",
+              "+created"
+            ],
+            "description": "Tri par date de création."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions, par exemple renderedBody."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/comment",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_add_comment",
+      "description": "Ajoute un commentaire à un ticket Jira ; renvoie le commentaire créé (id). Corps en ADF obligatoire en v3.",
+      "tags": [
+        "jira",
+        "commentaire",
+        "ecriture"
+      ],
+      "average_response_size": 1200,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "commentaire": {
+            "type": "object",
+            "description": "Commentaire.",
+            "properties": {
+              "body": {
+                "type": "object",
+                "description": "Document ADF (Atlassian Document Format) : {\"type\":\"doc\",\"version\":1,\"content\":[...]}.",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "doc"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "const": 1
+                  },
+                  "content": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "version",
+                  "content"
+                ],
+                "additionalProperties": true
+              },
+              "visibility": {
+                "type": "object",
+                "description": "Restriction de visibilité.",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "group",
+                      "role"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Nom du groupe ou du rôle."
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "commentaire"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/comment",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "commentaire"
+      }
+    },
+    {
+      "name": "jira_update_comment",
+      "description": "Modifie un commentaire existant d'un ticket Jira ; renvoie le commentaire mis à jour. Corps en ADF.",
+      "tags": [
+        "jira",
+        "commentaire",
+        "modification"
+      ],
+      "average_response_size": 1200,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du commentaire."
+          },
+          "commentaire": {
+            "type": "object",
+            "description": "Nouveau contenu.",
+            "properties": {
+              "body": {
+                "type": "object",
+                "description": "Document ADF (Atlassian Document Format) : {\"type\":\"doc\",\"version\":1,\"content\":[...]}.",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "doc"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "const": 1
+                  },
+                  "content": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "version",
+                  "content"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "id",
+          "commentaire"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/comment/{id}",
+        "http_method": "PUT",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "commentaire"
+      }
+    },
+    {
+      "name": "jira_delete_comment",
+      "description": "Supprime un commentaire d'un ticket Jira (irréversible) ; renvoie 204.",
+      "tags": [
+        "jira",
+        "commentaire",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du commentaire."
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/comment/{id}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_get_attachment_content",
+      "description": "Télécharge le contenu d'une pièce jointe Jira. La réponse est le fichier lui-même (souvent binaire) : à réserver aux fichiers texte ; `redirect=false` évite la redirection vers le stockage.",
+      "tags": [
+        "jira",
+        "piece-jointe",
+        "lecture"
+      ],
+      "average_response_size": 50000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la pièce jointe."
+          },
+          "redirect": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Suivre la redirection vers le fichier (défaut true)."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/attachment/content/{id}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_delete_attachment",
+      "description": "Supprime une pièce jointe Jira (irréversible) ; renvoie 204. L'envoi d'une pièce jointe n'est pas disponible (multipart).",
+      "tags": [
+        "jira",
+        "piece-jointe",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la pièce jointe."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/attachment/{id}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_list_worklogs",
+      "description": "Liste les saisies de temps (worklogs) d'un ticket Jira, paginées ; commentaire en ADF, durée dans `timeSpent` et `timeSpentSeconds`.",
+      "tags": [
+        "jira",
+        "worklog",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1048,
+            "description": "Nombre maximal de résultats (1 à 1048)."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions, par exemple properties."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/worklog",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_add_worklog",
+      "description": "Ajoute une saisie de temps à un ticket Jira ; fournir `timeSpent` ou `timeSpentSeconds`. Commentaire en ADF.",
+      "tags": [
+        "jira",
+        "worklog",
+        "ecriture"
+      ],
+      "average_response_size": 1000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "adjustEstimate": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "leave",
+              "new",
+              "manual"
+            ],
+            "description": "Ajustement de l'estimation restante (défaut auto)."
+          },
+          "newEstimate": {
+            "type": "string",
+            "pattern": "^[0-9wdhm ]{1,40}$",
+            "description": "Nouvelle estimation si adjustEstimate=new."
+          },
+          "worklog": {
+            "type": "object",
+            "description": "Saisie de temps.",
+            "properties": {
+              "timeSpent": {
+                "type": "string",
+                "pattern": "^[0-9wdhm ]{1,40}$",
+                "description": "Durée au format Jira, par exemple 1h 30m."
+              },
+              "timeSpentSeconds": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "started": {
+                "type": "string",
+                "pattern": "^[0-9T:.+-]{20,40}$",
+                "description": "Début, ISO 8601 avec fuseau, par exemple 2026-11-08T09:00:00.000+0100."
+              },
+              "comment": {
+                "type": "object",
+                "description": "Document ADF (Atlassian Document Format) : {\"type\":\"doc\",\"version\":1,\"content\":[...]}.",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "doc"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "const": 1
+                  },
+                  "content": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "required": [
+                  "type",
+                  "version",
+                  "content"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "worklog"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/worklog",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "worklog"
+      }
+    },
+    {
+      "name": "jira_delete_worklog",
+      "description": "Supprime une saisie de temps d'un ticket Jira ; renvoie 204.",
+      "tags": [
+        "jira",
+        "worklog",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du worklog."
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/worklog/{id}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_list_link_types",
+      "description": "Liste les types de liens entre tickets (Blocks, Relates…) avec leurs libellés entrant et sortant ; le `name` sert à jira_create_issue_link.",
+      "tags": [
+        "jira",
+        "lien",
+        "lecture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issueLinkType",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_create_issue_link",
+      "description": "Crée un lien entre deux tickets Jira ; renvoie 201 sans corps. `inwardIssue` est la cible côté entrant du type de lien (voir jira_list_link_types).",
+      "tags": [
+        "jira",
+        "lien",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "lien": {
+            "type": "object",
+            "description": "Lien à créer.",
+            "properties": {
+              "type": {
+                "type": "object",
+                "description": "Type de lien.",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nom du type, par exemple Blocks."
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "inwardIssue": {
+                "type": "object",
+                "description": "Ticket côté entrant.",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+                    "description": "Clé."
+                  }
+                },
+                "required": [
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "outwardIssue": {
+                "type": "object",
+                "description": "Ticket côté sortant.",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+                    "description": "Clé."
+                  }
+                },
+                "required": [
+                  "key"
+                ],
+                "additionalProperties": false
+              },
+              "comment": {
+                "type": "object",
+                "description": "Commentaire optionnel.",
+                "properties": {
+                  "body": {
+                    "type": "object",
+                    "description": "Document ADF (Atlassian Document Format) : {\"type\":\"doc\",\"version\":1,\"content\":[...]}.",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "doc"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "const": 1
+                      },
+                      "content": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "version",
+                      "content"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "inwardIssue",
+              "outwardIssue"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "lien"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issueLink",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "lien"
+      }
+    },
+    {
+      "name": "jira_delete_issue_link",
+      "description": "Supprime un lien entre tickets Jira (identifiant lu dans le champ issuelinks du ticket) ; renvoie 204.",
+      "tags": [
+        "jira",
+        "lien",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "linkId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du lien."
+          }
+        },
+        "required": [
+          "linkId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issueLink/{linkId}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_get_remote_links",
+      "description": "Liste les liens distants (URL externes) d'un ticket Jira.",
+      "tags": [
+        "jira",
+        "lien-distant",
+        "lecture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "globalId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_:/.=&-]{1,255}$",
+            "description": "Filtrer sur un identifiant global."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/remotelink",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_create_remote_link",
+      "description": "Ajoute un lien distant (URL externe) à un ticket Jira ; renvoie l'id du lien.",
+      "tags": [
+        "jira",
+        "lien-distant",
+        "ecriture"
+      ],
+      "average_response_size": 200,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "lien": {
+            "type": "object",
+            "description": "Lien distant.",
+            "properties": {
+              "object": {
+                "type": "object",
+                "description": "Cible.",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https?://[^ ]{1,2000}$",
+                    "description": "URL HTTPS."
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "Titre affiché."
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Résumé."
+                  }
+                },
+                "required": [
+                  "url",
+                  "title"
+                ],
+                "additionalProperties": true
+              },
+              "relationship": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "Nature du lien, par exemple relates to."
+              },
+              "globalId": {
+                "type": "string",
+                "maxLength": 255,
+                "description": "Identifiant global pour dédoublonner."
+              }
+            },
+            "required": [
+              "object"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "lien"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/remotelink",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "lien"
+      }
+    },
+    {
+      "name": "jira_delete_remote_link",
+      "description": "Supprime un lien distant d'un ticket Jira ; renvoie 204.",
+      "tags": [
+        "jira",
+        "lien-distant",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé du ticket, par exemple PLAT-42."
+          },
+          "linkId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du lien distant."
+          }
+        },
+        "required": [
+          "issueIdOrKey",
+          "linkId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/issue/{issueIdOrKey}/remotelink/{linkId}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_search_projects",
+      "description": "Recherche des projets Jira par nom ou clé, paginée (`values`, `isLast`).",
+      "tags": [
+        "jira",
+        "projet",
+        "recherche",
+        "lecture"
+      ],
+      "average_response_size": 5000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Texte à chercher dans le nom ou la clé."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Nombre maximal de résultats (1 à 50)."
+          },
+          "orderBy": {
+            "type": "string",
+            "enum": [
+              "key",
+              "-key",
+              "name",
+              "-name",
+              "category"
+            ],
+            "description": "Tri."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions, par exemple description,lead."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/project/search",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_get_project",
+      "description": "Lit un projet Jira ; la réponse contient aussi ses composants et ses versions (`components`, `versions`).",
+      "tags": [
+        "jira",
+        "projet",
+        "lecture"
+      ],
+      "average_response_size": 4000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "projectIdOrKey": {
+            "type": "string",
+            "pattern": "^([A-Z][A-Z0-9]{1,9}|[0-9]{1,19})$",
+            "description": "Clé ou identifiant du projet."
+          },
+          "expand": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.,-]{1,200}$",
+            "description": "Extensions, par exemple description,lead."
+          }
+        },
+        "required": [
+          "projectIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/project/{projectIdOrKey}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_search_users",
+      "description": "Recherche des utilisateurs Jira par nom ou courriel ; renvoie accountId, displayName, active. Le résultat dépend de la confidentialité des profils.",
+      "tags": [
+        "jira",
+        "utilisateur",
+        "recherche",
+        "lecture"
+      ],
+      "average_response_size": 2000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Nom, début de courriel ou nom d'affichage."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats (1 à 100)."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/user/search",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_list_fields",
+      "description": "Liste tous les champs Jira (système et personnalisés) avec id, nom et type ; permet de retrouver le `customfield_NNNNN` d'un champ. Réponse volumineuse.",
+      "tags": [
+        "jira",
+        "champ",
+        "lecture"
+      ],
+      "average_response_size": 60000,
+      "inputs": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "array"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/api/3/field",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_agile_list_boards",
+      "description": "Liste les tableaux Jira Software (Scrum ou Kanban), filtrables par projet ou par type ; pagination startAt (`values`, `isLast`).",
+      "tags": [
+        "jira",
+        "agile",
+        "tableau",
+        "lecture"
+      ],
+      "average_response_size": 4000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "projectKeyOrId": {
+            "type": "string",
+            "pattern": "^([A-Z][A-Z0-9]{1,9}|[0-9]{1,19})$",
+            "description": "Clé ou identifiant du projet."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "scrum",
+              "kanban",
+              "simple"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Nom (recherche partielle)."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Nombre maximal de résultats (1 à 50)."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/agile/1.0/board",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_agile_list_sprints",
+      "description": "Liste les sprints d'un tableau Scrum, filtrables par état. Erreur 400 si le tableau n'a pas de sprints (Kanban).",
+      "tags": [
+        "jira",
+        "agile",
+        "sprint",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du tableau."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "future",
+              "active",
+              "closed",
+              "active,future",
+              "active,closed",
+              "future,closed",
+              "future,active,closed"
+            ],
+            "description": "État(s) filtrés."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Nombre maximal de résultats (1 à 50)."
+          }
+        },
+        "required": [
+          "boardId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/agile/1.0/board/{boardId}/sprint",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_agile_get_sprint_issues",
+      "description": "Liste les tickets d'un sprint ; accepte `jql` en filtre et `fields` pour limiter la réponse.",
+      "tags": [
+        "jira",
+        "agile",
+        "sprint",
+        "lecture"
+      ],
+      "average_response_size": 25000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "sprintId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du sprint."
+          },
+          "jql": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Filtre JQL additionnel."
+          },
+          "fields": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_*,.-]{1,500}$",
+            "description": "Champs séparés par des virgules."
+          },
+          "startAt": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice du premier résultat (pagination par décalage)."
+          },
+          "maxResults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats (1 à 100)."
+          }
+        },
+        "required": [
+          "sprintId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/agile/1.0/sprint/{sprintId}/issue",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jira_agile_move_issues_to_sprint",
+      "description": "Déplace jusqu'à 50 tickets vers un sprint ; renvoie 204.",
+      "tags": [
+        "jira",
+        "agile",
+        "sprint",
+        "ecriture"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "sprintId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du sprint cible."
+          },
+          "deplacement": {
+            "type": "object",
+            "description": "Tickets à déplacer.",
+            "properties": {
+              "issues": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 50,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$"
+                },
+                "description": "Clés des tickets."
+              }
+            },
+            "required": [
+              "issues"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "sprintId",
+          "deplacement"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/agile/1.0/sprint/{sprintId}/issue",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "deplacement"
+      }
+    },
+    {
+      "name": "jsm_list_service_desks",
+      "description": "Liste les service desks Jira Service Management accessibles ; l'identifiant sert aux files d'attente. Pagination start/limit.",
+      "tags": [
+        "jsm",
+        "service-desk",
+        "lecture"
+      ],
+      "average_response_size": 2500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice de départ."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/servicedeskapi/servicedesk",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jsm_list_queues",
+      "description": "Liste les files d'attente d'un service desk JSM ; `includeCount=true` ajoute le nombre de tickets par file.",
+      "tags": [
+        "jsm",
+        "file",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant numérique du service desk."
+          },
+          "includeCount": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Inclure le décompte de tickets."
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice de départ."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [
+          "serviceDeskId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/servicedeskapi/servicedesk/{serviceDeskId}/queue",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jsm_get_queue_issues",
+      "description": "Liste les tickets d'une file d'attente JSM. Pagination start/limit (`isLastPage`).",
+      "tags": [
+        "jsm",
+        "file",
+        "lecture"
+      ],
+      "average_response_size": 15000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "serviceDeskId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant du service desk."
+          },
+          "queueId": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la file."
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice de départ."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [
+          "serviceDeskId",
+          "queueId"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/servicedeskapi/servicedesk/{serviceDeskId}/queue/{queueId}/issue",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "jsm_get_request_sla",
+      "description": "Lit les SLA d'une demande JSM (cycles en cours et terminés, temps restant, dépassement).",
+      "tags": [
+        "jsm",
+        "sla",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "issueIdOrKey": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,6}$",
+            "description": "Clé de la demande."
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Indice de départ."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/rest/servicedeskapi/request/{issueIdOrKey}/sla",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_search_cql",
+      "description": "Recherche Confluence par CQL (v1) ; renvoie pages, blogs, espaces avec extrait. Pagination par `cursor` (lien `_links.next`) ; ajouter `type=page` dans la CQL pour ne garder que les pages.",
+      "tags": [
+        "confluence",
+        "recherche",
+        "cql",
+        "lecture"
+      ],
+      "average_response_size": 20000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "cql": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Requête CQL, par exemple type = page AND space = DOC AND text ~ \"déploiement\"."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          },
+          "cursor": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.:-]{1,2000}$",
+            "description": "Curseur de page suivante, repris du lien `_links.next` de la réponse précédente."
+          },
+          "excerpt": {
+            "type": "string",
+            "enum": [
+              "highlight",
+              "indexed",
+              "none",
+              "highlight_unescaped",
+              "indexed_unescaped"
+            ]
+          }
+        },
+        "required": [
+          "cql"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/rest/api/search",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_get_page",
+      "description": "Lit une page Confluence (v2) ; `body-format` choisit le corps renvoyé (sans lui, aucun corps). ADF et storage sont verbeux ; `version` indique le numéro à reprendre pour modifier la page.",
+      "tags": [
+        "confluence",
+        "page",
+        "lecture"
+      ],
+      "average_response_size": 12000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "body-format": {
+            "type": "string",
+            "enum": [
+              "storage",
+              "atlas_doc_format",
+              "view"
+            ],
+            "description": "Format du corps : storage (XHTML), atlas_doc_format (ADF JSON sous forme de chaîne) ou view (HTML rendu)."
+          },
+          "get-draft": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Lire le brouillon."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Numéro de version à lire."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_create_page",
+      "description": "Crée une page Confluence (v2) dans un espace ; renvoie la page avec son id et sa version 1. `body.representation` vaut storage ou atlas_doc_format et `body.value` est une chaîne.",
+      "tags": [
+        "confluence",
+        "page",
+        "creation"
+      ],
+      "average_response_size": 4000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "private": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Créer la page en privé."
+          },
+          "page": {
+            "type": "object",
+            "description": "Page à créer.",
+            "properties": {
+              "spaceId": {
+                "type": "string",
+                "pattern": "^[0-9]{1,19}$",
+                "description": "Identifiant numérique de l'espace."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "draft"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255,
+                "description": "Titre."
+              },
+              "parentId": {
+                "type": "string",
+                "pattern": "^[0-9]{1,19}$",
+                "description": "Page parente."
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "representation": {
+                    "type": "string",
+                    "enum": [
+                      "storage",
+                      "atlas_doc_format",
+                      "wiki"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "representation",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "spaceId",
+              "title",
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "page"
+      }
+    },
+    {
+      "name": "confluence_update_page",
+      "description": "Modifie une page Confluence (v2) en remplaçant titre et corps ; `version.number` doit être la version actuelle plus un, sinon conflit 409. Lire d'abord la page pour obtenir sa version.",
+      "tags": [
+        "confluence",
+        "page",
+        "modification"
+      ],
+      "average_response_size": 4000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "page": {
+            "type": "object",
+            "description": "Nouvelle version de la page.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9]{1,19}$",
+                "description": "Identifiant de la page (répété)."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "draft"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255,
+                "description": "Titre."
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "representation": {
+                    "type": "string",
+                    "enum": [
+                      "storage",
+                      "atlas_doc_format"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "representation",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "version": {
+                "type": "object",
+                "description": "Version.",
+                "properties": {
+                  "number": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 100000,
+                    "description": "Numéro de la nouvelle version (actuelle + 1)."
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Message de version."
+                  }
+                },
+                "required": [
+                  "number"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "title",
+              "body",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "page"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}",
+        "http_method": "PUT",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "page"
+      }
+    },
+    {
+      "name": "confluence_delete_page",
+      "description": "Supprime une page Confluence (v2) : mise à la corbeille, ou purge définitive avec `purge=true` (page déjà en corbeille) ; renvoie 204.",
+      "tags": [
+        "confluence",
+        "page",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "purge": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Purger définitivement (défaut false)."
+          },
+          "draft": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Supprimer le brouillon."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_get_page_children",
+      "description": "Liste les pages enfants directes d'une page Confluence (v2), paginées par `cursor` (lien `_links.next`).",
+      "tags": [
+        "confluence",
+        "page",
+        "arborescence",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page parente."
+          },
+          "cursor": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.:-]{1,2000}$",
+            "description": "Curseur de page suivante, repris du lien `_links.next` de la réponse précédente."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "id",
+              "-id",
+              "child-position",
+              "-child-position"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}/children",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_get_page_ancestors",
+      "description": "Liste les ancêtres d'une page Confluence (v2), de la racine de l'espace jusqu'au parent ; sert à reconstituer le fil d'Ariane.",
+      "tags": [
+        "confluence",
+        "page",
+        "arborescence",
+        "lecture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}/ancestors",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_get_footer_comments",
+      "description": "Lit les commentaires de pied de page d'une page Confluence (v2), paginés par `cursor` ; `body-format` choisit le corps.",
+      "tags": [
+        "confluence",
+        "commentaire",
+        "lecture"
+      ],
+      "average_response_size": 6000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "body-format": {
+            "type": "string",
+            "enum": [
+              "storage",
+              "atlas_doc_format",
+              "view"
+            ],
+            "description": "Format du corps : storage (XHTML), atlas_doc_format (ADF JSON sous forme de chaîne) ou view (HTML rendu)."
+          },
+          "cursor": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.:-]{1,2000}$",
+            "description": "Curseur de page suivante, repris du lien `_links.next` de la réponse précédente."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "created-date",
+              "-created-date",
+              "modified-date",
+              "-modified-date"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}/footer-comments",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_create_footer_comment",
+      "description": "Ajoute un commentaire de pied de page à une page Confluence (v2), ou une réponse avec `parentCommentId` ; corps en storage ou ADF.",
+      "tags": [
+        "confluence",
+        "commentaire",
+        "ecriture"
+      ],
+      "average_response_size": 1500,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "commentaire": {
+            "type": "object",
+            "description": "Commentaire.",
+            "properties": {
+              "pageId": {
+                "type": "string",
+                "pattern": "^[0-9]{1,19}$",
+                "description": "Page commentée."
+              },
+              "parentCommentId": {
+                "type": "string",
+                "pattern": "^[0-9]{1,19}$",
+                "description": "Commentaire auquel répondre."
+              },
+              "body": {
+                "type": "object",
+                "description": "Corps.",
+                "properties": {
+                  "representation": {
+                    "type": "string",
+                    "enum": [
+                      "storage",
+                      "atlas_doc_format"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "representation",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "commentaire"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/footer-comments",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "commentaire"
+      }
+    },
+    {
+      "name": "confluence_get_inline_comments",
+      "description": "Lit les commentaires en ligne (ancrés sur un texte) d'une page Confluence (v2), paginés ; `resolutionStatus` filtre résolus ou ouverts.",
+      "tags": [
+        "confluence",
+        "commentaire",
+        "lecture"
+      ],
+      "average_response_size": 6000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "body-format": {
+            "type": "string",
+            "enum": [
+              "storage",
+              "atlas_doc_format",
+              "view"
+            ],
+            "description": "Format du corps : storage (XHTML), atlas_doc_format (ADF JSON sous forme de chaîne) ou view (HTML rendu)."
+          },
+          "resolution-status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "reopened",
+              "resolved",
+              "dangling"
+            ]
+          },
+          "cursor": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.:-]{1,2000}$",
+            "description": "Curseur de page suivante, repris du lien `_links.next` de la réponse précédente."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}/inline-comments",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_list_page_attachments",
+      "description": "Liste les pièces jointes d'une page Confluence (v2) avec nom, taille et lien de téléchargement ; l'envoi (multipart) n'est pas disponible.",
+      "tags": [
+        "confluence",
+        "piece-jointe",
+        "lecture"
+      ],
+      "average_response_size": 3000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Nom de fichier exact."
+          },
+          "mediaType": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9.+/-]{1,100}$",
+            "description": "Type MIME."
+          },
+          "cursor": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.:-]{1,2000}$",
+            "description": "Curseur de page suivante, repris du lien `_links.next` de la réponse précédente."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/pages/{id}/attachments",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_list_spaces",
+      "description": "Liste les espaces Confluence (v2) ; filtres `keys` (clés séparées par des virgules) et `type`. Pour lire un espace seul, filtrer par `keys` ou `ids`.",
+      "tags": [
+        "confluence",
+        "espace",
+        "lecture"
+      ],
+      "average_response_size": 5000,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "string",
+            "pattern": "^[0-9,]{1,500}$",
+            "description": "Identifiants numériques séparés par des virgules."
+          },
+          "keys": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9~,_.-]{1,500}$",
+            "description": "Clés d'espace séparées par des virgules."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "global",
+              "personal",
+              "collaboration",
+              "knowledge_base"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "archived"
+            ]
+          },
+          "description-format": {
+            "type": "string",
+            "enum": [
+              "plain",
+              "view"
+            ]
+          },
+          "cursor": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_=+/.:-]{1,2000}$",
+            "description": "Curseur de page suivante, repris du lien `_links.next` de la réponse précédente."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Nombre maximal de résultats par page (1 à 100)."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/api/v2/spaces",
+        "http_method": "GET",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    },
+    {
+      "name": "confluence_add_labels",
+      "description": "Ajoute des libellés à une page Confluence (API v1) ; le corps est un tableau d'objets {prefix, name}. Renvoie la liste des libellés de la page.",
+      "tags": [
+        "confluence",
+        "libelle",
+        "ecriture"
+      ],
+      "average_response_size": 800,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "libelles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Libellés à ajouter.",
+            "items": {
+              "type": "object",
+              "description": "Libellé.",
+              "properties": {
+                "prefix": {
+                  "type": "string",
+                  "enum": [
+                    "global",
+                    "my",
+                    "team"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "pattern": "^[^\\s]{1,255}$",
+                  "description": "Nom (minuscules, sans espace)."
+                }
+              },
+              "required": [
+                "prefix",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "libelles"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/rest/api/content/{id}/label",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        },
+        "body_field": "libelles"
+      }
+    },
+    {
+      "name": "confluence_remove_label",
+      "description": "Retire un libellé d'une page Confluence (API v1) ; renvoie 204.",
+      "tags": [
+        "confluence",
+        "libelle",
+        "suppression"
+      ],
+      "average_response_size": 100,
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]{1,19}$",
+            "description": "Identifiant de la page."
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[^\\s/?#]{1,255}$",
+            "description": "Nom du libellé."
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "type": "object"
+      },
+      "tool_call_template": {
+        "call_template_type": "http",
+        "url": "${ATLASSIAN_SITE}/wiki/rest/api/content/{id}/label/{label}",
+        "http_method": "DELETE",
+        "content_type": "application/json",
+        "auth": {
+          "auth_type": "basic",
+          "username": "${ATLASSIAN_USERNAME}",
+          "password": "${ATLASSIAN_API_TOKEN}"
+        }
+      }
+    }
+  ]
+}
